@@ -1,0 +1,51 @@
+##CONNECT TO SSH
+1. scaricare vscode server:https://update.code.visualstudio.com/latest/server-linux-x64/stable
+2. creare tutte le cartelle da public fino a latest  come nel percorso di punto 3 una alla volta
+3. mkdir /public/stefanob/.vscode-server/bin/latest ( comando unico per riassunto ma van fatte una alla volta)
+4. scp -r D:\stefano\Download\vscode-server-linux-x64.tar.gz stefano.balla@slurm.cs.unibo.it:/public/stefanob/.vscode-server/bin/latest
+   ( sostare il file scaricato nella cartella di destinazione)
+5. spacchettare il file tar da dentro la cartella di dest: tar -xvzf vscode-server-linux-x64.tar.gz --strip-components 1
+6. creare link simbolico con la home:  ln -s /public/stefanob/.vscode-server ~/.vscode-server
+3. se non va rimuovere link con rm -rf .vscode-server e tornare a punto 2
+
+ISTRUZIONI---->>>> https://stackoverflow.com/questions/62613523/how-to-change-vscode-server-directory 
+
+#CREATE VIRTUALENV
+1. create virtualenv chiamato stefanovenv in /public : virtualenv -p /usr/bin/python3 stefanovenv
+1bis. copiare lo spazio virtuale contenuto in download nella nuova cartella
+1bisbis. creare link simbolico come in punto 6 di guida precedente se cambi nome della cartella ( il link simbolico deve chiamarsi come lo spazio virtuale creato in public)
+2. ln -s /public/stefanovenv ~/stefanovenv
+3. entrare su stefanovenv e attivare con : . bin/activate  
+4. istallare moduli tipo pythorch: pip3 install torch==1.8.1+cu111 -f https://download.pytorch.org/whl/torch_stable.html
+ e pip install "ray[tune]"
+
+##dentro il virtual env ma fuori da bin bisogna creare nella cartella bin un file con scritto:
+chiamalo bash.script
+------------------------------
+
+#!/bin/bash
+#SBATCH --job-name=nomejob
+#SBATCH --mail-type=ALL
+#SBATCH --mail-user=stefano.balla@studio.unibo.it
+#SBATCH --time=150:00:00
+#SBATCH --nodes=1
+#SBATCH --ntasks-per-node=1
+#SBATCH --output=prologinBatch8Emb32Epoch500
+#SBATCH --gres=gpu:1
+
+. bin/activate  # per attivare il virtual environment python
+
+python code2vec-master/run.py
+------------------------
+
+
+poi bisogna lanciare da dentro la cartella in cui c'è il file batch: sbatch batch.script
+
+
+-----------
+Copiare contenuto di una cartella nella macchina remota:
+
+ scp -r D:\stefano\Download\myvenvstefanoOtt\myvenvstefano stefano.balla@slurm.cs.unibo.it:/public/myvenvstefano
+
+ da macchina remota a macchina locale:
+scp -r stefano.balla@slurm.cs.unibo.it:/public/myvenvstefano/  D:\stefano\Download\myvenvstefano

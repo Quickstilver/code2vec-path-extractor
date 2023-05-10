@@ -1,0 +1,13 @@
+import sys, string
+
+# make the googlerese dic
+gdic = {}
+sample_googlerese = "yqeeejpmysljylckdkxveddknmcrejsicpdrysirbcpcypcrtcsradkhwyfrepkymveddknkmkrkcddekrkdeoyakwaejtysrreujdrlkgcjv"
+sample_plain_text = "azooourlanguageisimpossibletounderstandtherearetwentysixfactorialpossibilitiessoitisokayifyouwanttojustgiveup"
+for gletter, pletter in zip(sample_googlerese, sample_plain_text):
+	if gletter in gdic:
+		if not gdic[gletter] == pletter:
+			print( "ERROR!! Can't analyze the sample text.")
+			sys.exit()
+	else:
+		gdic[gletter] = pletter
