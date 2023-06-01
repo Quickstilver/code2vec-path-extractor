@@ -45,7 +45,7 @@ poi bisogna lanciare da dentro la cartella in cui c'è il file batch: sbatch bat
 -----------
 Copiare contenuto di una cartella nella macchina remota:
 
- scp -r D:\stefano\Download\myvenvstefanoOtt\myvenvstefano stefano.balla@slurm.cs.unibo.it:/public/myvenvstefano
+ scp -r C:\Users\stefb\Documents\code2vec_path_extractor\datasets\processed_dataset\gcjpyredMINIstring stefano.balla@slurm.cs.unibo.it:/public.hpc/stefanovenv
 
  da macchina remota a macchina locale:
 scp -r stefano.balla@slurm.cs.unibo.it:/public/myvenvstefano/  D:\stefano\Download\myvenvstefano
