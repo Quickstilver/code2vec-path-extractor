@@ -90,7 +90,7 @@ def leaf2leaf2(leaf_node, tree, content): #path in a form Terminal-HASH-Terminal
         if (len(path2) + 1) // 2 < 9: ###lenght of path reale senza le tokenIniziali è len(path2)-2 DIV2 con DIV2 divisione intera, ora è settata a 7
             path_string = str(path2[1:-1]).encode('utf-8')
             path_hash = str(hashlib.sha256(path_string).hexdigest())
-            path_final = f"{start_token},{path_string},{end_token} "
+            path_final = f"{start_token},{path_hash},{end_token} "
             method_ina_line.append(path_final)
 
     return method_ina_line
