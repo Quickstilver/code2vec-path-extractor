@@ -59,18 +59,18 @@ def leaf2leaf3(leaf_node, tree, content):
         start_token = start_token.replace(" ", "WS").replace(",", "CMA").replace("\n", "NL").replace("\t", "TAB")
         end_token = end_token.replace(" ", "WS").replace(",", "CMA").replace("\n", "NL").replace("\t", "TAB")
 
-        pathUP, pathDOWN = [start_token], [end_token, "↓"]
+        pathUP, pathDOWN = [start_token], [end_token, "<-"]
         p1, p2 = start.parent, end.parent
 
         pathUP.append(p1.type)
-        pathDOWN.extend([p2.type,"↓"])
+        pathDOWN.extend([p2.type,"<-"])
 
         while p1 != p2:
             p1, p2 = p1.parent, p2.parent
             if p1:
                 pathUP.append(p1.type)
             if p2:
-                pathDOWN.extend([p2.type,"↓"])
+                pathDOWN.extend([p2.type,"<-"])
 
         pathDOWN.reverse()
         dirty_path = pathUP + pathDOWN
@@ -80,17 +80,17 @@ def leaf2leaf3(leaf_node, tree, content):
         for n, item in enumerate(dirty_path):
             if item not in path2:
                 path2.append(item)
-                if item == "↓":
+                if item == "<-":
                     go_down = True
-                if not go_down and dirty_path[n+1] != "↓":
-                    path2.append("↑")
-                if item != "↓" and go_down and (n+1 < len(dirty_path)):
-                    path2.append("↓")
+                if not go_down and dirty_path[n+1] != "<-":
+                    path2.append("->")
+                if item != "<-" and go_down and (n+1 < len(dirty_path)):
+                    path2.append("<-")
 
         if (len(path2) + 1) // 2 < 9: ###lenght of path reale senza le tokenIniziali è len(path2)-2 DIV2 con DIV2 divisione intera, ora è settata a 7
             path_string = str(path2[1:-1]).encode('utf-8')
             path_hash = str(hashlib.sha256(path_string).hexdigest())
-            path_final = f"{start_token},{path_hash},{end_token} "
+            path_final = f"{start_token},{path_string},{end_token} "
             method_ina_line.append(path_final)
 
     return method_ina_line
@@ -110,18 +110,18 @@ def leaf2leaf4(leaf_node, tree, content): #it use the content of the node instea
         start_token = start_token.replace(" ", "WS").replace(",", "CMA").replace("\n", "NL")
         end_token = end_token.replace(" ", "WS").replace(",", "CMA").replace("\n", "NL")
 
-        pathUP, pathDOWN = [start_token], [end_token, "↓"]
+        pathUP, pathDOWN = [start_token], [end_token, "<-"]
         p1, p2 = start.parent, end.parent
         
         pathUP.append(content[p1.start_byte:p1.end_byte].decode('utf8'))
-        pathDOWN.extend([content[p2.start_byte:p2.end_byte].decode('utf8'),"↓"])
+        pathDOWN.extend([content[p2.start_byte:p2.end_byte].decode('utf8'),"<-"])
 
         while p1 != p2:
             p1, p2 = p1.parent, p2.parent
             if p1:
                 pathUP.append(content[p1.start_byte:p1.end_byte].decode('utf8'))
             if p2:
-                pathDOWN.extend([content[p2.start_byte:p2.end_byte].decode('utf8'),"↓"])
+                pathDOWN.extend([content[p2.start_byte:p2.end_byte].decode('utf8'),"<-"])
 
         pathDOWN.reverse()
         dirty_path = pathUP + pathDOWN
@@ -131,12 +131,12 @@ def leaf2leaf4(leaf_node, tree, content): #it use the content of the node instea
         for n, item in enumerate(dirty_path):
             if item not in path2:
                 path2.append(item)
-                if item == "↓":
+                if item == "<-":
                     go_down = True
-                if not go_down and dirty_path[n+1] != "↓":
-                    path2.append("↑")
-                if item != "↓" and go_down and (n+1 < len(dirty_path)):
-                    path2.append("↓")
+                if not go_down and dirty_path[n+1] != "<-":
+                    path2.append("->")
+                if item != "<-" and go_down and (n+1 < len(dirty_path)):
+                    path2.append("<-")
 
         if (len(path2) + 1) // 2 < 9: ###lenght of path reale senza le tokenIniziali è len(path2)-2 DIV2 con DIV2 divisione intera, ora è settata a 7
             path_string = str(path2[1:-1]).encode('utf-8')
@@ -145,6 +145,20 @@ def leaf2leaf4(leaf_node, tree, content): #it use the content of the node instea
             method_ina_line.append(path_final)
 
     return method_ina_line
+
+
+def print_node(node, source_code, depth=0, indent=''):
+
+    start_bf, start_after = trailing_space(node, source_code)
+    node_code = start_bf + source_code[node.start_byte:node.end_byte].decode('utf8') + start_after
+    node_code = node_code.replace(" ", "WS").replace(",", "CMA").replace("\n", "NL").replace("\t", "TAB")
+
+    print(f"Node{depth} {indent}{node.type}: {node_code}")
+
+    if node.children:
+        for child in node.children:
+            print_node(child, source_code, depth + 1, indent + '-')
+
 
 
 def create_dataset(origin, destination):
@@ -180,6 +194,8 @@ def create_dataset(origin, destination):
                     token_node=[] 
                     contents = f.read()
                     tree = parser.parse(contents)
+                    
+                    print_node(tree.root_node, contents)
                     leaf,leaf_node= traverse(tree,token,token_node,contents)
                     example=set(leaf2leaf3(leaf_node,tree,contents)) #in leaf2leaf viene definita lenght max path
 

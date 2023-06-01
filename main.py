@@ -20,12 +20,14 @@ if __name__ == '__main__':
 
     build_tree_sitter()
 
-    folders=['gcjpyred','gcjpyredMINI','gcjpyredBLACKED']
+    #folders=['gcjpyred', 'gcjpyredMINI', 'gcjpyredBLACKED'] 
+    
 
     for folder in folders:
+        
         print(f"Processing {folder}...")
         origin = os.path.join('datasets','raw_dataset', folder)
-        destination = os.path.join('datasets','processed_dataset', folder + "processed")
+        destination = os.path.join('datasets','processed_dataset', folder + "10")
 
         create_dataset(origin, destination) #crea il dataset come file di testo, qui c'è la lengh limitation
         split_train_test_val(preprocessing, destination)

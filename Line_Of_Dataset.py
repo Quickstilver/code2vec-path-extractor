@@ -5,12 +5,42 @@ import numpy as np
 from sklearn.model_selection import train_test_split
 import pandas as pd
 from imblearn.over_sampling import RandomOverSampler
+import re
+
+def convert_triplets(triplets):
+    converted = []
+    for triplet in triplets:
+        # regex pattern that captures the three parts of the triplet separately
+        pattern = r"(.*?),(b\"[^\"]*\"),(.*)"
+        matches = re.match(pattern, triplet)
+        if matches:
+            # Append a list of the three parts to converted
+            converted.append([matches.group(1), matches.group(2), matches.group(3)])
+    return converted
+
+def find_triplets(input_string):
+    # regex pattern that captures triplets in the form "string, b"[...]", string"
+    pattern = r"([^,]*,b\"[^\"]*\",[^,\s]*)"
+    matches = re.findall(pattern, input_string)
+    matches = [match.lstrip() for match in matches]
+    return matches
+
+def split_string(input_string):
+    # Split the string at the first occurrence of whitespace
+    split_list = input_string.split(' ', 1)
+
+    # If there is no whitespace in the string, return the whole string as the first item and an empty string as the second
+    if len(split_list) == 1:
+        return split_list[0], ''
+    else:
+        return split_list[0], split_list[1]
 
 def parse_line(line):
     """
     Takes a string 'x y1,p1,z1 y2,p2,z2 ... yn,pn,zn and splits into name (x) and tree [[y1,p1,z1], ...]
     """
     name, *tree = line.split(' ')
+    #print(tree[0])
     tree = [t.split(',') for t in tree if t != '' and t != '\n']
     return name, tree
 
@@ -25,9 +55,12 @@ def create_dict(dest1):
         listtoken=[]
         
         for line in file_:
-            name,tree=parse_line(line)
+            line = line. rstrip('\n')
+            name,tree = split_string(line)
+            matches = find_triplets(tree)
+            elements = convert_triplets(matches)
 
-            for el in tree:
+            for el in elements:
                 listtoken.append(el[0])    #inserisco lo start token e l'end token in una lista per contare le occorrenze
                 listtoken.append(el[2])
                 listpath.append(el[1])  #inserisco il path in una lista per contare le occorrenze
@@ -37,6 +70,7 @@ def create_dict(dest1):
         target2count=dict(Counter(listname))
         path2count= dict(Counter(listpath))
         word2count= dict(Counter(listtoken))
+
 
     with open(os.path.join(dest1,'target2count1.pkl'),'wb') as file: 
         pickle.dump(target2count, file)
