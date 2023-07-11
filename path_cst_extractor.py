@@ -247,9 +247,9 @@ def create_dataset(origin, destination):
                     contents = f.read()
                     tree = parser.parse(contents)
                     
-                    #print_node(tree.root_node, contents)
+                    print_node(tree.root_node, contents)
                     leaf,leaf_node= traverse(tree,token,token_node,contents)
-                    example=set(leaf2leaf2(leaf_node,tree,contents)) #in leaf2leaf viene definita lenght max path
+                    example=set(leaf2leaf3(leaf_node,tree,contents)) #in leaf2leaf viene definita lenght max path
 
                     if len(example)!=0:
 
