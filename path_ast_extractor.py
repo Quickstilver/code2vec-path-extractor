@@ -1,179 +1,290 @@
-'''
-import ast
-import astunparse
 
-class Node:
-    def __init__(self, node, parent=None):
-        self.node = node
-        self.parent = parent
-        self.children = []
+import random
+import os
 
-    def add_child(self, node):
-        self.children.append(node)
-
-
-def traverse_tree_and_build(root_node, node, parent=None):
-    root_node = Node(node, parent)
-    for child in ast.iter_child_nodes(node):
-        root_node.add_child(traverse_tree_and_build(root_node, child, root_node))
-    return root_node
-
-
-def get_leaves(node, leaves=None):
-    if leaves is None:
-        leaves = []
-    for child in node.children:
-        if len(child.children) == 0:
-            leaves.append(child)
-        else:
-            get_leaves(child, leaves)
-    return leaves
-
-
-def get_path_from_to(n1, n2, path=None):
-    if path is None:
-        path = []
-    if n1 == n2:
-        return path + [n1]
-    if n1 is None:
-        return None
-    return get_path_from_to(n1.parent, n2, path + [n1])
-
-
-def node_to_str(node, source_code):
-    if isinstance(node, ast.Name):
-        return node.id
-    elif isinstance(node, ast.Constant):
-        return str(node.value)
-    elif isinstance(node, ast.BinOp) and isinstance(node.op, ast.Add):
-        return '+'
-    elif isinstance(node, ast.Load):
-        return 'Load'
-    elif isinstance(node, ast.Store):
-        return 'Store'
-    else:
-        return type(node).__name__
-
-
-def get_leaf_to_leaf_paths(source_code):
-    tree = ast.parse(source_code)
-    root_node = traverse_tree_and_build(None, tree)
-    leaves = get_leaves(root_node)
-    paths = []
-    for i in range(len(leaves)):
-        for j in range(i+1, len(leaves)):
-            path = get_path(leaves[i], leaves[j], source_code)
-            if path:
-                paths.append(path)
-    return paths
-
-
-def get_path(n1, n2, source_code):
-    lca = get_lowest_common_ancestor(n1, n2)
-    if lca is None:
-        return
-    path1 = get_path_from_to(lca, n1)
-    path2 = get_path_from_to(lca, n2)
-    path1 = [node_to_str(n.node, source_code) for n in reversed(path1)]
-    path2 = [node_to_str(n.node, source_code) for n in path2[1:]]
-    return path1 + path2
-
-
-def get_lowest_common_ancestor(n1, n2):
-    path1 = get_path_from_to(n1, n2)
-    path2 = get_path_from_to(n2, n1)
-    if path1 is None or path2 is None:
-        return None
-    for node in reversed(path1):
-        if node in path2:
-            return node
-    return None
-
-
-source_code = """
-def function(a,b):
-
-
-    result=a+b
-
-
-    print('Result: ',  result)
-"""
-
-paths = get_leaf_to_leaf_paths(source_code)
-
-for path in paths:
-    print(path)
-
-
-
-
-
-
-print("the whole tree",astunparse.dump(ast.parse(source_code)))
-'''
-
-import ast
+from typed_ast import ast27 as ast
 from itertools import combinations
+import hashlib
 
-def add_parents(node, parent=None):
-    node.parent = parent
+
+class RemoveLoadNode(ast.NodeTransformer):
+    '''
+    Removes all occurrences of the ast.Load node from the AST.
+    '''
+    def generic_visit(self, node):
+        """
+        Called if no explicit visitor function exists for a node.
+        """
+        for field, old_value in ast.iter_fields(node):
+            # For singular nodes
+            if isinstance(old_value, ast.AST):
+                new_node = self.visit(old_value)
+                if new_node is None:
+                    setattr(node, field, None)  # Set field to None if Load node is encountered and removed
+                elif new_node != old_value:
+                    setattr(node, field, new_node)
+            # For lists of nodes
+            elif isinstance(old_value, list):
+                new_values = []
+                for value in old_value:
+                    if isinstance(value, ast.AST):
+                        value = self.visit(value)
+                        if value is not None:  # Add to the list only if it's not a Load node
+                            new_values.append(value)
+                old_value[:] = new_values
+        return node
+
+    def visit_Load(self, node):
+        return None  # Removes the Load node by returning None
+
+
+# Determine parent for each node
+def set_parents(node, parent=None):
     for child in ast.iter_child_nodes(node):
-        add_parents(child, node)
+        child.parent = parent
+        set_parents(child, child)
 
-def get_path_to_root(node):
-    path = [node]
-    while hasattr(node, 'parent') and node.parent is not None:
+def get_leaf_nodes(node):
+    if not list(ast.iter_child_nodes(node)):
+        return [node]
+    else:
+        leaves = []
+        for child in ast.iter_child_nodes(node):
+            leaves.extend(get_leaf_nodes(child))
+        return leaves
+
+def get_path_upwards(node, target_ancestor):
+    path = []
+    while node.parent and node != target_ancestor:
         node = node.parent
         path.append(node)
     return path
 
-def get_common_ancestor(node1, node2):
-    path1 = set(get_path_to_root(node1))
-    path2 = set(get_path_to_root(node2))
 
-    return path1 & path2
+def find_common_ancestor(node1, node2):
+    ancestors_node1 = set()
+    current = node1
+    while hasattr(current, "parent"):
+        ancestors_node1.add(current)
+        current = current.parent
 
-def leaf_to_leaf_paths(node):
-    leaves = [leaf for leaf in ast.walk(node) if not list(ast.iter_child_nodes(leaf))]
-    paths = []
-    for leaf1, leaf2 in combinations(leaves, 2):
-        common_ancestor = max(get_common_ancestor(leaf1, leaf2), key=lambda n: n.depth)
-        path1 = get_path_to_root(leaf1)[:leaf1.depth - common_ancestor.depth + 1]
-        path2 = get_path_to_root(leaf2)[:leaf2.depth - common_ancestor.depth][::-1]
-        path = path1 + path2
-        # Format the output string to reflect the direction of traversal
-        formatted_path = ''
-        for i in range(len(path) - 1):
-            if i < len(path1) - 1:
-                formatted_path += type(path[i]).__name__ + ' -> '
-            else:
-                formatted_path += type(path[i]).__name__ + ' <- '
-        formatted_path += type(path[-1]).__name__
-        paths.append(formatted_path)
+    current = node2
+    while hasattr(current, "parent"):
+        if current in ancestors_node1:
+            return current
+        current = current.parent
+    return None
 
-    return paths
+def get_code_snippet(node, code):
+    lines = code.splitlines()
 
-# Add depth and parents to each node
-def add_depth_and_parents(node, depth=0, parent=None):
-    node.depth = depth
-    node.parent = parent
-    for child in ast.iter_child_nodes(node):
-        add_depth_and_parents(child, depth + 1, node)
+    # Handling for Compare nodes to get the entire comparison as a snippet
+    if isinstance(node, ast.Compare):
+        left_value = get_code_snippet(node.left, code)
+        op = get_code_snippet(node.ops[0], code)  # For simplicity, just handle the first operator
+        comparator = get_code_snippet(node.comparators[0], code)  # Similarly, handle the first comparator
+        return f"{left_value} {op} {comparator}"
 
-code = """
-def function(a,b):
-    result = a + b
-    print('Result: ', result)
-"""
+    if hasattr(node, 'lineno') and hasattr(node, 'col_offset') and hasattr(node, 'end_lineno') and hasattr(node, 'end_col_offset'):
+        # Extract code snippet based on lineno and col_offset attributes
+        start_line = lines[node.lineno - 1][node.col_offset:]
+        end_line = lines[node.end_lineno - 1][:node.end_col_offset]
+        middle_lines = lines[node.lineno:node.end_lineno - 1]
+        return ' '.join([start_line] + middle_lines + [end_line]).strip()
 
-tree = ast.parse(code)
-add_depth_and_parents(tree)
+    if isinstance(node, ast.Eq):
+        return "=="	
 
-paths = leaf_to_leaf_paths(tree)
+    # Mapping based on provided list
+    attribute_mapping = {
+        ast.Attribute: "value",
+        ast.Subscript: "value",
+        ast.List: "elts",
+        ast.Tuple: "elts",
+        ast.Slice: "lower",
+        ast.ExtSlice: "dims",
+        ast.Index: "value",
+        ast.ExceptHandler: "name",
+        ast.TypeIgnore: "lineno",
+        ast.Module: "body",
+        ast.Interactive: "body",
+        ast.Expression: "body",
+        ast.FunctionType: ["argtypes", "returns"],
+        ast.Suite: "body",
+        ast.FunctionDef: "name",
+        ast.ClassDef: "name",
+        ast.Return: "value",
+        ast.Delete: "targets",
+        ast.Assign: "targets",
+        ast.AugAssign: "target",
+        ast.Print: "dest",
+        ast.For: "target",
+        ast.While: "test",
+        ast.If: "test",
+        ast.With: "context_expr",
+        ast.Raise: "type",
+        ast.TryExcept: "body",
+        ast.TryFinally: "body",
+        ast.Assert: "test",
+        ast.Import: "names",
+        ast.ImportFrom: "module",
+        ast.Exec: "body",
+        ast.Global: "names",
+        ast.Expr: "value",
+        ast.BoolOp: "op",
+        ast.BinOp: "left",
+        ast.UnaryOp: "op",
+        ast.Lambda: "args",
+        ast.IfExp: "test",
+        ast.Dict: "keys",
+        ast.Set: "elts",
+        ast.ListComp: "elt",
+        ast.SetComp: "elt",
+        ast.DictComp: "key",
+        ast.GeneratorExp: "elt",
+        ast.Yield: "value",
+        ast.Compare: "left",
+        ast.Call: "func",
+        ast.Repr: "value",
+        ast.Num: "n",
+        ast.Str: "s",
+		ast.Name : "id"
+    }
 
-for path in paths:
-    print(path)
+    attr_name = attribute_mapping.get(type(node))
+    if attr_name:
+        if isinstance(attr_name, list):
+            # If there are multiple attributes, combine their values (this is a basic assumption, might need adjustment)
+            return " ".join([str(getattr(node, name)) for name in attr_name if hasattr(node, name)])
+        elif hasattr(node, attr_name):
+            return str(getattr(node, attr_name))
+
+    return str(type(node).__name__)  # Fallback to node type if we can't extract snippet
+
+
+
+
+
+def extract_paths(module, leaf_nodes, code):
+    comb = list(combinations(leaf_nodes, 2))
+    all_paths = []
+
+    for node1, node2 in comb:
+        common_ancestor = find_common_ancestor(node1, node2)
+        
+        path1UP = [str(type(node).__name__) for node in get_path_upwards(node1, common_ancestor)]
+        path2UP = [str(type(node).__name__) for node in get_path_upwards(node2, common_ancestor)]
+        
+        # For the leaf nodes, we extract the actual code snippet
+        path1UP.insert(0, get_code_snippet(node1, code))
+        path2UP.insert(0, get_code_snippet(node2, code))
+        #print(path1UP[0])
+        #print(path2UP[0])
+
+        path2UP.reverse()
+        all_paths.append((path1UP, path2UP))
+    
+    return all_paths
+
+
+def concatenate_paths(paths):
+    concatenated = []
+    
+    for path1, path2 in paths:
+        new_path = []
+        for node in path1[:-1]:
+            new_path.append(node)
+            new_path.append('->')
+        for node in path2:
+            new_path.append(node)
+            new_path.append('<-')
+        new_path = new_path[:-1]
+        concatenated.append(new_path)
+    
+    return concatenated
+
+def sanitize_string(s):
+    return s.replace(" ", "").replace(",", "").replace("\n", "").replace("\t", "")
+
+def hash_paths(concatenated_paths):
+    method_ina_line = []
+
+    for path in concatenated_paths:
+        real_path_length = (len(path) - 2) // 2
+        if real_path_length < 9:
+            path_string = str(path[1:-1]).encode('utf-8')
+            path_hash = str(hashlib.sha256(path_string).hexdigest())
+            formatted_hash = f'b"{path_hash}"'
+
+            first_node = sanitize_string(str(path[0]))
+            last_node = sanitize_string(str(path[-1]))
+            
+            path_final = f"{first_node},{formatted_hash},{last_node} "
+            method_ina_line.append(path_final)
+
+    return method_ina_line
+
+
+
+
+
+def create_ast_dataset(origin, destination):
+
+    curr=os.getcwd()
+    origin= os.path.join(curr, origin)
+    destination_folder = os.path.join(curr, destination)
+    destination_file = os.path.join(destination_folder, "datasetgrezzo.txt")
+    os.makedirs(destination_folder, exist_ok=True)
+    l=0
+
+    with open(destination_file, 'w',encoding="utf-8") as dataset:
+
+        for root, dirs, files in os.walk(origin, topdown = False):
+
+            for name in files:
+
+                file_int=""
+                target_example=""
+                strexample=""
+                example=""
+                target=os.path.split(os.path.split(root)[1])[1]
+                print(target)
+                doc= os.path.join(root, name)
+                
+                try:  # Start of try block
+                    with open(doc, 'rb') as f:
+
+                        contents = f.read().decode("utf-8")                    
+                        
+                        module = ast.parse(contents)
+                        module = RemoveLoadNode().visit(module)
+                        set_parents(module) 
+                        leaf_nodes = get_leaf_nodes(module)
+                        paths = extract_paths(module, leaf_nodes, contents)
+                        concatenated_paths = concatenate_paths(paths)
+                        example = hash_paths(concatenated_paths)
+                        example=set(example)
+
+                        if len(example)!=0:
+
+                            if len(example)>200:   ###definisce il numero di path max per riga di esempio
+                                l=l+1
+                                example = random.sample(example, 200)
+
+                            strexample = ''.join(example)
+
+                        file_int = strexample + file_int
+                    
+                        if len(file_int)>0:
+                            target_example= target + " " + file_int +'\n'
+                            dataset.write(target_example)  #scrivere su txt
+
+                except Exception as e:  # Handle the exception
+                    print(f"An error occurred processing the file: {doc}")
+                    print(f"Error: {e}")
+                
+    print("dataset created")
+    print("numero example>200", l)
 
 
 

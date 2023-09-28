@@ -90,7 +90,8 @@ def leaf2leaf2(leaf_node, tree, content): #path in a form Terminal-HASH-Terminal
         if (len(path2) + 1) // 2 < 9: ###lenght of path reale senza le tokenIniziali è len(path2)-2 DIV2 con DIV2 divisione intera, ora è settata a 7
             path_string = str(path2[1:-1]).encode('utf-8')
             path_hash = str(hashlib.sha256(path_string).hexdigest())
-            path_final = f"{start_token},{path_hash},{end_token} "
+            formatted_hash = f'b"{path_hash}"'
+            path_final = f"{start_token},{formatted_hash},{end_token} " 
             method_ina_line.append(path_final)
 
     return method_ina_line
@@ -193,7 +194,8 @@ def leaf2leaf4(leaf_node, tree, content): #it use the content of the node instea
         if (len(path2) + 1) // 2 < 9: ###lenght of path reale senza le tokenIniziali è len(path2)-2 DIV2 con DIV2 divisione intera, ora è settata a 7
             path_string = str(path2[1:-1]).encode('utf-8')
             path_hash = str(hashlib.sha256(path_string).hexdigest())
-            path_final = f"{start_token},{path_hash},{end_token} "
+            formatted_hash = f'b"{path_hash}"'
+            path_final = f"{start_token},{formatted_hash},{end_token} " #prima passavo direttamente path_hash
             method_ina_line.append(path_final)
 
     return method_ina_line
@@ -225,6 +227,7 @@ def create_dataset(origin, destination):
     destination_file = os.path.join(destination_folder, "datasetgrezzo.txt")
     os.makedirs(destination_folder, exist_ok=True)
     l=0
+    tot=0
 
     with open(destination_file, 'w',encoding="utf-8") as dataset:
 
@@ -247,15 +250,17 @@ def create_dataset(origin, destination):
                     contents = f.read()
                     tree = parser.parse(contents)
                     
-                    print_node(tree.root_node, contents)
+                    #print_node(tree.root_node, contents)
                     leaf,leaf_node= traverse(tree,token,token_node,contents)
-                    example=set(leaf2leaf3(leaf_node,tree,contents)) #in leaf2leaf viene definita lenght max path
+                    example=set(leaf2leaf2(leaf_node,tree,contents)) #in leaf2leaf viene definita lenght max path
 
                     if len(example)!=0:
 
-                        if len(example)>200:   ###definisce il numero di path max per riga di esempio
+                        tot = tot + len(example)
+
+                        if len(example)>500:   ###definisce il numero di path max per riga di esempio
                             l=l+1
-                            example=random.sample(example, 200)
+                            example=random.sample(example, min(500, len(example)))
 
                         strexample = ''.join(example)
 
@@ -267,5 +272,6 @@ def create_dataset(origin, destination):
 
                 
     print("dataset created")
-    print("numero example>200", l)
+    print("numero example>500", l)
+    print("numero example tot:", tot/590)
 

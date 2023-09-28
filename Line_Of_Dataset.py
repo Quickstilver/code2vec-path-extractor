@@ -18,9 +18,28 @@ def convert_triplets(triplets):
             converted.append([matches.group(1), matches.group(2), matches.group(3)])
     return converted
 
+def convert_triplets_new(triplets):
+    converted = []
+    for triplet in triplets:
+        # regex pattern that captures the three parts of both types of triplets separately
+        pattern = r'(.*?),((?:b\"[^\"]*\"|[a-fA-F0-9]{64})),(.*)'
+        matches = re.match(pattern, triplet)
+        if matches:
+            # Append a list of the three parts to converted
+            converted.append([matches.group(1), matches.group(2), matches.group(3)])
+    return converted
+
 def find_triplets(input_string):
     # regex pattern that captures triplets in the form "string, b"[...]", string"
     pattern = r"([^,]*,b\"[^\"]*\",[^,\s]*)"
+    matches = re.findall(pattern, input_string)
+    matches = [match.lstrip() for match in matches]
+    return matches
+
+def find_triplets_new(input_string):
+    # regex pattern that captures triplets in the forms:
+    # "string, b"[...]", string" and "string, hash256, string"
+    pattern = r'([^,]*,(?:b\"[^\"]*\"|[a-fA-F0-9]{64}),[^,\s]*)'
     matches = re.findall(pattern, input_string)
     matches = [match.lstrip() for match in matches]
     return matches
@@ -48,6 +67,7 @@ def parse_line(line):
 def create_dict(dest1):
     curr=os.getcwd()
     datar= os.path.join(curr, dest1, "train1.txt")
+    
 
     with open(datar, 'r') as file_:
         listname=[]
@@ -57,8 +77,8 @@ def create_dict(dest1):
         for line in file_:
             line = line. rstrip('\n')
             name,tree = split_string(line)
-            matches = find_triplets(tree)
-            elements = convert_triplets(matches)
+            matches = find_triplets_new(tree)
+            elements = convert_triplets_new(matches)
 
             for el in elements:
                 listtoken.append(el[0])    #inserisco lo start token e l'end token in una lista per contare le occorrenze
@@ -171,6 +191,6 @@ def split_train_test_val(pre, dest1):
     return data_train, data_test, data_val
     
 #split_train_test_val(True,'cancella')
-#create_dict('cancella')
+#create_dict('datasets\processed_dataset\gcjpyredAST')
 
         

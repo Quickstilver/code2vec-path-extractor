@@ -5,6 +5,8 @@ import subprocess
 from create_tree_sitter import build_tree_sitter
 from function_splitter import snippler
 from path_cst_extractor import create_dataset
+from path_ast_extractor import create_ast_dataset
+from path_parso_extractor import create_parso_dataset
 from Line_Of_Dataset import create_dict,split_train_test_val
 
 if __name__ == '__main__':
@@ -23,17 +25,18 @@ if __name__ == '__main__':
 
     build_tree_sitter()
 
-    folders=['prova'] #'gcjpyred', 'gcjpyredMINI', 'gcjpyredBLACKED'
+    folders=['gcjpyred','gcjpyredMINI', 'gcjpyredBLACKED']  #, 'gcjpyredMINI', 'gcjpyredBLACKED'
     
-    '''
+    
     # get a list of all subdirectories in the first folder
-    first_folder_path = os.path.join('datasets','raw_dataset', folders[0])
+    first_folder_path = os.path.join('datasets','raw_dataset', 'gcjpyred')
     all_subdirs = [d for d in os.listdir(first_folder_path) if os.path.isdir(os.path.join(first_folder_path, d))]
 
     # randomly select 10 of these subdirectories
-    random.seed(1)  # use a seed for reproducibility
+    random.seed(123)  # use a seed for reproducibility
     selected_subdirs = random.sample(all_subdirs, 20)
 
+    
     for folder in folders:
         new_folder = os.path.join('datasets', 'random_subdirs', folder)
         os.makedirs(new_folder, exist_ok=True)
@@ -44,16 +47,17 @@ if __name__ == '__main__':
             dest_path = os.path.join(new_folder, subdir)
             if not os.path.exists(dest_path):
                 shutil.copytree(src_path, dest_path)
-    '''
+    
 
     #creation pipeline
     for folder in folders:
 
         print(f"Processing {folder}...")
         origin = os.path.join('datasets','raw_dataset', folder)
-        destination = os.path.join('datasets','processed_dataset', folder + "prova")
+        destination = os.path.join('datasets','processed_dataset', folder + "CST_len500")
 
         create_dataset(origin, destination) 
-        #split_train_test_val(preprocessing, destination)
-        #create_dict(destination)
+        split_train_test_val(preprocessing, destination)
+        create_dict(destination)
         print(f"Completed processing {folder}\n")
+    
