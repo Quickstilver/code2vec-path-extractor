@@ -25,13 +25,14 @@ if __name__ == '__main__':
 
     build_tree_sitter()
 
-    folders=['gcjpyred','gcjpyredMINI', 'gcjpyredBLACKED']  #, 'gcjpyredMINI', 'gcjpyredBLACKED'
+    folders=['gcjpyred','gcjpyredMINI', 'gcjpyredBLACKED']  #, 
     
-    
+    '''
     # get a list of all subdirectories in the first folder
     first_folder_path = os.path.join('datasets','raw_dataset', 'gcjpyred')
     all_subdirs = [d for d in os.listdir(first_folder_path) if os.path.isdir(os.path.join(first_folder_path, d))]
 
+    
     # randomly select 10 of these subdirectories
     random.seed(123)  # use a seed for reproducibility
     selected_subdirs = random.sample(all_subdirs, 20)
@@ -48,13 +49,13 @@ if __name__ == '__main__':
             if not os.path.exists(dest_path):
                 shutil.copytree(src_path, dest_path)
     
-
+    '''
     #creation pipeline
     for folder in folders:
 
         print(f"Processing {folder}...")
         origin = os.path.join('datasets','raw_dataset', folder)
-        destination = os.path.join('datasets','processed_dataset', folder + "CST_len500")
+        destination = os.path.join('datasets','processed_dataset', folder + "paper")
 
         create_dataset(origin, destination) 
         split_train_test_val(preprocessing, destination)

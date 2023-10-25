@@ -799,7 +799,6 @@ def testing():
         f.write(log+'\n')
     print(log)
 
-
     log = 'Testing \n'
     with open(LOG_PATH, 'a+') as f:
         f.write(log+'\n')
